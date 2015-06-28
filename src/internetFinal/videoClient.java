@@ -4,6 +4,8 @@ package internetFinal;
 import internetFinal.SimpleChatClient.SendButtonListener;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -19,7 +21,10 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.swing.JButton;
+import javax.swing.JPanel;
 
+import com.xuggle.mediatool.IMediaWriter;
+import com.xuggle.mediatool.ToolFactory;
 import com.xuggle.xuggler.Global;
 import com.xuggle.xuggler.IAudioSamples;
 import com.xuggle.xuggler.ICodec;
@@ -39,6 +44,7 @@ public class videoClient {
 	PrintWriter writer;
 	BufferedReader reader;
 	String[] fileList = null;
+	static boolean downloadOrNot = false;
 	
 	static boolean isLogIn = false;
 	
@@ -165,11 +171,11 @@ public class videoClient {
 //				e.printStackTrace();
 //			}
 			
-//			writer.println("fileData youtube_h264_mp3.flv ");
-//  			writer.flush();
-			
-			writer.println("fileList");
+			writer.println("fileData youtube_h264_mp3.flv ");
   			writer.flush();
+			
+//			writer.println("fileList");
+//  			writer.flush();
   			
 //			while(true){
 //				writer.println("register ");
@@ -336,7 +342,7 @@ public class videoClient {
                     {
                       // if this stream is not in BGR24, we're going to need to
                       // convert it.  The VideoResampler does that for us.
-                      resampler = IVideoResampler.make(videoCoder.getWidth(), videoCoder.getHeight(), IPixelFormat.Type.BGR24,
+                      resampler = IVideoResampler.make(600, 450, IPixelFormat.Type.BGR24,
                           videoCoder.getWidth(), videoCoder.getHeight(), videoCoder.getPixelType());
                       if (resampler == null)
                         throw new RuntimeException("could not create color space resampler for: " + filename);
@@ -378,18 +384,33 @@ public class videoClient {
 //                  mScreen.setLayout(null);
                   
                   
+                  JPanel jp = new JPanel();
+                  JPanel tjp = new JPanel();
+                  JPanel tjp2 = new JPanel();
+                  tjp.setVisible(false);
+                  tjp2.setVisible(false);
+//                  jp.setSize(100,600);
+                  
+                  jp.setLayout(new GridLayout(6,0));
+                  jp.add(tjp);
+                  jp.add(tjp2);
+                  
+                  
+                  
+                  System.out.println(jp.getLayout());
+                  
                   JButton sendButton = new JButton("暫停");
                   sendButton.addActionListener(new SendButtonListener());
                   sendButton.setSize(100, 100);
-                  sendButton.setLocation(500, 500);
-                  mScreen.add(sendButton,BorderLayout.EAST);
+                  jp.add(sendButton);
                   
                   terminateButton = new JButton("結束");
                   terminateButton.addActionListener(new terminateButtonListener());
                   terminateButton.setSize(100, 100);
-                  terminateButton.setLocation(300, 500);
-                  mScreen.add(terminateButton,BorderLayout.WEST);
+                  jp.add(terminateButton);
                   mScreen.setDefaultCloseOperation(mScreen.EXIT_ON_CLOSE);
+                  jp.setBackground(Color.green);
+                  mScreen.add(jp,BorderLayout.EAST);
                   
                   while(container.readNextPacket(packet) >= 0)
                   {
@@ -431,7 +452,7 @@ public class videoClient {
                         if (resampler != null)
                         {
                           // we must resample
-                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), picture.getWidth(), picture.getHeight());
+                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 450);
                           if (resampler.resample(newPic, picture) < 0)
                             throw new RuntimeException("could not resample video from: " + filename);
                         }
@@ -456,7 +477,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(700, 700);
+                        mScreen.setSize(700, 550);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -609,8 +630,9 @@ public class videoClient {
         {
         	if(mScreen == null){
         		mScreen = new VideoImage();
+        		mScreen.setSize(700, 550);
         	}
-//          mScreen.setSize(1000, 1000);
+          
         }
 
         /**
@@ -746,6 +768,10 @@ public class videoClient {
 //                  Thread.sleep(3000);
                   // Create a Xuggler container object
                   container = IContainer.make();
+                  IMediaWriter mWriter = null;
+                  if(downloadOrNot == true){
+                	  mWriter = ToolFactory.makeWriter("fileName.flv");
+                  }
                   
                   // Open up the container
                   int a;
@@ -810,7 +836,7 @@ public class videoClient {
                     {
                       // if this stream is not in BGR24, we're going to need to
                       // convert it.  The VideoResampler does that for us.
-                      resampler = IVideoResampler.make(videoCoder.getWidth(), videoCoder.getHeight(), IPixelFormat.Type.BGR24,
+                      resampler = IVideoResampler.make(600, 450, IPixelFormat.Type.BGR24,
                           videoCoder.getWidth(), videoCoder.getHeight(), videoCoder.getPixelType());
                       if (resampler == null)
                         throw new RuntimeException("could not create color space resampler for: " + filename);
@@ -844,6 +870,10 @@ public class videoClient {
                    * Now, we start walking through the container looking at each packet.
                    */
                   IPacket packet = IPacket.make();
+                  if(downloadOrNot == true){
+	                  mWriter.addAudioStream(1, 0, audioCoder.getChannels(), audioCoder.getSampleRate());
+	                  mWriter.addVideoStream(0, 0, videoCoder.getWidth(), videoCoder.getHeight());
+                  }
                   mFirstVideoTimestampInStream = Global.NO_PTS;
                   mSystemVideoClockStartTime = 0;
                   
@@ -852,18 +882,48 @@ public class videoClient {
 //                  mScreen.setLayout(null);
                   
                   
+//                  JButton sendButton = new JButton("暫停");
+//                  sendButton.addActionListener(new SendButtonListener());
+////                  sendButton.setSize(100, 100);
+////                  sendButton.setLocation(500, 500);
+//                  mScreen.add(sendButton,BorderLayout.EAST);
+//                  
+//                  terminateButton = new JButton("結束");
+//                  terminateButton.addActionListener(new terminateButtonListener());
+////                  terminateButton.setSize(100, 100);
+////                  terminateButton.setLocation(300, 500);
+//                  mScreen.add(terminateButton,BorderLayout.WEST);
+//                  mScreen.setDefaultCloseOperation(mScreen.EXIT_ON_CLOSE);
+//                  GridLayout gl = new GridLayout(2,1);
+                  
+                  
+                  JPanel jp = new JPanel();
+                  JPanel tjp = new JPanel();
+                  JPanel tjp2 = new JPanel();
+//                  jp.setSize(100,600);
+                  tjp.setVisible(false);
+                  tjp2.setVisible(false);
+                  
+                  jp.setLayout(new GridLayout(6,0));
+                  jp.add(tjp);
+                  jp.add(tjp2);
+                  
+                  
+                  
+                  System.out.println(jp.getLayout());
+                  
                   JButton sendButton = new JButton("暫停");
                   sendButton.addActionListener(new SendButtonListener());
                   sendButton.setSize(100, 100);
-                  sendButton.setLocation(500, 500);
-                  mScreen.add(sendButton,BorderLayout.EAST);
+                  jp.add(sendButton);
                   
                   terminateButton = new JButton("結束");
                   terminateButton.addActionListener(new terminateButtonListener());
                   terminateButton.setSize(100, 100);
-                  terminateButton.setLocation(300, 500);
-                  mScreen.add(terminateButton,BorderLayout.WEST);
+                  jp.add(terminateButton);
                   mScreen.setDefaultCloseOperation(mScreen.EXIT_ON_CLOSE);
+                  jp.setBackground(Color.green);
+                  mScreen.add(jp,BorderLayout.EAST);
                   
                   while(container.readNextPacket(packet) >= 0)
                   {
@@ -897,6 +957,9 @@ public class videoClient {
                        */
                       if (picture.isComplete())
                       {
+                    	if(downloadOrNot == true){
+                    		mWriter.encodeVideo(0, picture);
+                    	}
                         IVideoPicture newPic = picture;
                         /*
                          * If the resampler is not null, that means we didn't get the video in BGR24 format and
@@ -905,7 +968,7 @@ public class videoClient {
                         if (resampler != null)
                         {
                           // we must resample
-                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), picture.getWidth(), picture.getHeight());
+                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 450);
                           if (resampler.resample(newPic, picture) < 0)
                             throw new RuntimeException("could not resample video from: " + filename);
                         }
@@ -930,7 +993,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(700, 700);
+                        mScreen.setSize(700, 550);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -982,6 +1045,9 @@ public class videoClient {
                          */
                         if (samples.isComplete())
                         {
+                          if(downloadOrNot == true){
+                        	  mWriter.encodeAudio(1, samples);
+                          }
                           // note: this call will block if Java's sound buffers fill up, and we're
                           // okay with that.  That's why we have the video "sleeping" occur
                           // on another thread.
@@ -1017,6 +1083,10 @@ public class videoClient {
                   {
                     container.close();
                     container = null;
+                  }
+                  if( mWriter != null)
+                  {
+                	mWriter.close();
                   }
                   closeJavaSound();
                   closeJavaVideo();

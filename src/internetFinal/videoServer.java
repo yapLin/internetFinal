@@ -267,7 +267,7 @@ public class videoServer {
 //	            }
 	            printStream.flush();
 	            printStream.close();
-	            inputStream.close(); 
+	            inputStream.close();
 	            
 //	            clientSkt.close();
 	            
@@ -313,9 +313,6 @@ public class videoServer {
 	        ServerSocket serverSkt = new ServerSocket(port); 
 	        
 	        while(true) {
-	        	
-	        	
-	        	
 	        	
 	            System.out.println("傾聽中....");
 	            
