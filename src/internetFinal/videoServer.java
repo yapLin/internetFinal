@@ -158,23 +158,34 @@ public class videoServer {
 			//切割fileName出來
 			String[] stringArray = threadType.split(" ");
 			System.out.print("stringArray: "+stringArray[1].toString());
-			String getFileName = stringArray[1].toString();
+			String getFileName = stringArray[1].toString();	//檔名
+			
+			//若為ad則從server端決定
+			if(type.equals("ad")){
+				getFileName = "youtube_h264_mp3.flv";
+			}
+			
+			
+			int fileSizeAns = getFileSize(getFileName);
+			
 			
 			int nextPort = currentPortNum;
 			currentPortNum = currentPortNum + 1;
 			
 			Thread t = new Thread(new sendBinary(getFileName, nextPort));
 			t.start();
-			
+			System.out.println("ad or not type: "+type);
 			if(type.equals("ad")){
 				//告訴client我assign的port號
-				writer.println("getFilePortNumForAd "+nextPort+" ");
+				writer.println("getFilePortNumForAd "+nextPort+" "+Integer.toString(fileSizeAns)+" "+stringArray[1].toString()+" ");
 				writer.flush();
+				System.out.println("in ad if");
 			}
 			else{
 				//告訴client我assign的port號
-				writer.println("getFilePortNum "+nextPort+" ");
+				writer.println("getFilePortNum "+nextPort+" "+Integer.toString(fileSizeAns)+" "+getFileName+" ");
 				writer.flush();
+				System.out.println("in notAd if");
 			}
 			
 			
@@ -287,7 +298,7 @@ public class videoServer {
 	public int getFileSize(String filename){
 		IContainer container = IContainer.make();
 		int result = container.open(filename, IContainer.Type.READ, null);
-		
+		System.out.println("getFileSizeFileName = "+ filename);
 		// check if the operation was successful
 		if (result<0)
 			throw new RuntimeException("Failed to open media file");

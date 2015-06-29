@@ -2,9 +2,11 @@ package internetFinal;
 
 
 import internetFinal.SimpleChatClient.SendButtonListener;
+import internetFinal.videoClient.binaryReadIn.UpdateWorker;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -14,14 +16,20 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Random;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 
 import com.xuggle.mediatool.IMediaWriter;
 import com.xuggle.mediatool.ToolFactory;
@@ -52,6 +60,8 @@ public class videoClient {
 	
 	int currentStatus = 1;
 	int countBytes = 0;
+//	int num2 = 0;
+//	int num = 0;
 
 	static int port = 5000;
 	static String remoteHost = "127.0.0.1";
@@ -74,26 +84,43 @@ public class videoClient {
 				System.out.println("read " + message);
 				
 				//對server給的資料做判斷
-				if(message.startsWith("getFilePortNum")){
-					System.out.println("in getFilePortNum now~");
-					//切割portNum出來
-					String[] stringArray = message.split(" ");
-					String getPortNum = stringArray[1].toString();	//port號
-					int getPortNumInt = Integer.parseInt(getPortNum);
-					//get file data here
-					Thread binaryFileThread = new Thread(new binaryReadIn(getPortNumInt));
-					binaryFileThread.start();
-				}
-				else if(message.startsWith("getFilePortNumForAd")){
+				if(message.startsWith("getFilePortNumForAd")){
 					//切割portNum出來
 					System.out.println("in getFilePortNumForAd now~");
 					String[] stringArray = message.split(" ");
 					String getPortNum = stringArray[1].toString();	//port號
 					int getPortNumInt = Integer.parseInt(getPortNum);
+					
+					//file size
+					String fileSizeAns = stringArray[2].toString();	//file size
+					int fileSizeInt = Integer.parseInt(fileSizeAns);
+					System.out.println("(ad)fileSizeInt: "+ fileSizeInt);
+					
+					//file name
+					String fileName = stringArray[3].toString();	//file name
+					System.out.println("(ad)fileName: "+ fileName);
+					
 					//get file data here
-					Thread adBinaryFileThread = new Thread(new adBinaryReadIn(getPortNumInt));
+					Thread adBinaryFileThread = new Thread(new adBinaryReadIn(getPortNumInt,fileSizeInt,fileName));
 					adBinaryFileThread.start();
 				}
+				else if(message.startsWith("getFilePortNum")){
+					System.out.println("in getFilePortNum now~");
+					//切割portNum出來
+					String[] stringArray = message.split(" ");
+					String getPortNum = stringArray[1].toString();	//port號
+					int getPortNumInt = Integer.parseInt(getPortNum);
+					
+					//file size
+					String fileSizeAns = stringArray[2].toString();	//file size
+					int fileSizeInt = Integer.parseInt(fileSizeAns);
+					System.out.println("(b)fileSizeInt: "+ fileSizeInt);
+					
+					//get file data here
+					Thread binaryFileThread = new Thread(new binaryReadIn(getPortNumInt,fileSizeInt));
+					binaryFileThread.start();
+				}
+				
 				else if(message.startsWith("loginSuccess")){
 					System.out.println("登入成功");
 					isLogIn = true;
@@ -157,7 +184,15 @@ public class videoClient {
 	        e.printStackTrace(); 
 	    } 
 	}
-	
+	public String getFlvOfFile(String fileName){
+		int fileIndex = 0;
+		for(int i = 0; i< fileList.length; i++){
+			if(fileList[i].equals(fileName)){
+				fileIndex = i;
+			}
+		}
+		return Integer.toString(fileIndex)+".flv";
+	}
     
     public class outgoingWriter implements Runnable{
 		public void run() {
@@ -171,7 +206,7 @@ public class videoClient {
 //				e.printStackTrace();
 //			}
 			
-			writer.println("fileData youtube_h264_mp3.flv ");
+			writer.println("adFileData fileName.flv ");
   			writer.flush();
 			
 //			writer.println("fileList");
@@ -182,19 +217,6 @@ public class videoClient {
 //				writer.flush();
 //			}
 			
-			
-			
-//			try {
-//				Thread.sleep(1000);
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//			writer.println("fileList");
-//			writer.flush();
-//			writer.println("fileList");
-//			writer.flush();
-//			writer.println("fileList");
-//			writer.flush();
 //			writer.println("fileData youtube_h264_mp3.flv ");
 //			writer.flush();
 					
@@ -203,6 +225,10 @@ public class videoClient {
 	}
     public class adBinaryReadIn implements Runnable{
 		int portForConnect;
+		int thisFileSize;
+		int num;
+		String thisFileName;
+		
 		Socket skt_b;
 		IContainer container;
 		
@@ -222,9 +248,13 @@ public class videoClient {
 		  private long mFirstVideoTimestampInStream;
 		  
 		
-    	public adBinaryReadIn(int portNum){
+    	public adBinaryReadIn(int portNum, int fileSizeAns, String fileName){
     		portForConnect = portNum;
+    		thisFileSize = fileSizeAns;
+//    		System.out.println("thisFileSize: "+thisFileSize);
+    		thisFileName = fileName;
 //    		mScreen = null;
+//    		num = 0;
 		}
     	public void run() {
 			//connect with server with portNum and remoteHost
@@ -288,19 +318,19 @@ public class videoClient {
                   if ((a = container.open(skt_b.getInputStream(), null)) < 0){
 //                  if ((a =container.open(XugglerIO.map(aa,skt.getInputStream()), 
 //                		     IContainer.Type.READ, null)) < 0){
-                	  System.out.println(a);
-                	  System.out.println(container.isOpened());
-                	  System.out.println(skt_b);
-                	  System.out.println(skt_b.getInputStream());
+//                	  System.out.println(a);
+//                	  System.out.println(container.isOpened());
+//                	  System.out.println(skt_b);
+//                	  System.out.println(skt_b.getInputStream());
                 	  throw new IllegalArgumentException("could not open InputStream");
                   }
                   
                   System.out.println("可以打開InputStream了！");
                   // query how many streams the call to open found
                   int numStreams = container.getNumStreams();
-                  System.out.println("numStreams: "+numStreams);
+//                  System.out.println("numStreams: "+numStreams);
                   long fileSize = container.getFileSize();
-                  System.out.println("fileSize: "+fileSize);
+//                  System.out.println("fileSize: "+fileSize);
                   
                   // and iterate through the streams to find the first audio stream
                   int videoStreamId = -1;
@@ -342,7 +372,7 @@ public class videoClient {
                     {
                       // if this stream is not in BGR24, we're going to need to
                       // convert it.  The VideoResampler does that for us.
-                      resampler = IVideoResampler.make(600, 450, IPixelFormat.Type.BGR24,
+                      resampler = IVideoResampler.make(600, 500, IPixelFormat.Type.BGR24,
                           videoCoder.getWidth(), videoCoder.getHeight(), videoCoder.getPixelType());
                       if (resampler == null)
                         throw new RuntimeException("could not create color space resampler for: " + filename);
@@ -380,7 +410,7 @@ public class videoClient {
                   mSystemVideoClockStartTime = 0;
                   
                   
-                  System.out.println(mScreen.getLayout());
+//                  System.out.println(mScreen.getLayout());
 //                  mScreen.setLayout(null);
                   
                   
@@ -396,20 +426,48 @@ public class videoClient {
                   jp.add(tjp2);
                   
                   
+//                  System.out.println(jp.getLayout());
                   
-                  System.out.println(jp.getLayout());
+                  JButton sendButton = new JButton(new ImageIcon("1435509837_play.png"));
+                  sendButton.setOpaque(false);
+                  sendButton.setContentAreaFilled(false);
+                  sendButton.setBorderPainted(false);
                   
-                  JButton sendButton = new JButton("暫停");
+                  JButton pauseButton = new JButton(new ImageIcon("1435509845_pause.png"));
+                  pauseButton.setOpaque(false);
+                  pauseButton.setContentAreaFilled(false);
+                  pauseButton.setBorderPainted(false);
+                  pauseButton.addActionListener(new StopButtonListener());
+                  
                   sendButton.addActionListener(new SendButtonListener());
-                  sendButton.setSize(100, 100);
+//                  sendButton.setSize(100, 100);
                   jp.add(sendButton);
+                  jp.add(pauseButton);
                   
-                  terminateButton = new JButton("結束");
+                  terminateButton = new JButton(new ImageIcon("1435509855_stop.png"));
+                  terminateButton.setOpaque(false);
+                  terminateButton.setContentAreaFilled(false);
+                  terminateButton.setBorderPainted(false);
+                  
+                  JProgressBar progressBar = new JProgressBar();  
+                  progressBar.setValue(0);  
+                  progressBar.setStringPainted(true);
+                  progressBar.setSize(100, 20);
+//                  progressBar.setBackground(Color.re);
+                  UIManager.put("ProgressBar.background", Color.ORANGE);
+                  UIManager.put("ProgressBar.foreground", Color.RED);
+                  UIManager.put("ProgressBar.selectionBackground", Color.BLUE);
+                  UIManager.put("ProgressBar.selectionForeground", Color.gray);
+                  
+                  mScreen.add(progressBar, BorderLayout.SOUTH);
+                  UpdateWorker updateWorker = new UpdateWorker(progressBar);  
+                  updateWorker.execute();
+                  
                   terminateButton.addActionListener(new terminateButtonListener());
-                  terminateButton.setSize(100, 100);
+//                  terminateButton.setSize(100, 100);
                   jp.add(terminateButton);
                   mScreen.setDefaultCloseOperation(mScreen.EXIT_ON_CLOSE);
-                  jp.setBackground(Color.green);
+                  jp.setBackground(Color.gray);
                   mScreen.add(jp,BorderLayout.EAST);
                   
                   while(container.readNextPacket(packet) >= 0)
@@ -417,7 +475,7 @@ public class videoClient {
                 	  while(currentStatus == 0){
                 		  System.out.print("InWhile");
                 	  }
-                	  System.out.println();
+//                	  System.out.println();
                     /*
                      * Now we have a packet, let's see if it belongs to our video stream
                      */
@@ -434,6 +492,8 @@ public class videoClient {
                        * 
                        */
                       int bytesDecoded = videoCoder.decodeVideo(picture, packet, 0);
+                      num = num + bytesDecoded;
+//                      System.out.println("sum of bytesDecoded: "+num);
                       if (bytesDecoded < 0)
                         throw new RuntimeException("got error decoding audio in: " + filename);
 
@@ -445,6 +505,8 @@ public class videoClient {
                       if (picture.isComplete())
                       {
                         IVideoPicture newPic = picture;
+//                        num = (int)videoCoder.getExtraDataSize(); //picture.getSize();
+//                        System.out.println("num: "+num);
                         /*
                          * If the resampler is not null, that means we didn't get the video in BGR24 format and
                          * need to convert it into BGR24 format.
@@ -452,7 +514,7 @@ public class videoClient {
                         if (resampler != null)
                         {
                           // we must resample
-                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 450);
+                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 500);
                           if (resampler.resample(newPic, picture) < 0)
                             throw new RuntimeException("could not resample video from: " + filename);
                         }
@@ -477,7 +539,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(700, 550);
+                        mScreen.setSize(650, 520);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -519,6 +581,7 @@ public class videoClient {
                       while(offset < packet.getSize())
                       {
                         int bytesDecoded = audioCoder.decodeAudio(samples, packet, offset);
+                        num = num + bytesDecoded;
                         if (bytesDecoded < 0)
                           throw new RuntimeException("got error decoding audio in: " + filename);
                         offset += bytesDecoded;
@@ -570,15 +633,17 @@ public class videoClient {
                 
                   
                 //temp~~~~~~~
-//                writer.println("adFileData IMG_2964.flv ");
-//      			writer.flush();
-//                
-//      			Thread.sleep(10000);
-                skt.close();
+                writer.println("fileData "+thisFileName+" ");
+      		  	writer.flush();
+//              
+      		  	mScreen.remove(progressBar);
+      		  	mScreen.repaint();
+      		  	System.out.println("\n檔案接收完畢！(adBinaryReadIn)");
+              
+      			Thread.sleep(1000);
                 
-                System.out.println("\n檔案接收完畢！(adBinaryReadIn)");
                 
-                
+                skt_b.close();
     	        
     		}catch(Exception ex){
     			ex.printStackTrace();
@@ -616,7 +681,7 @@ public class videoClient {
             // remember that IVideoPicture and IAudioSamples timestamps are always in MICROSECONDS,
             // so we divide by 1000 to get milliseconds.
             long millisecondsStreamTimeSinceStartOfVideo = (picture.getTimeStamp() - mFirstVideoTimestampInStream)/1000;
-            final long millisecondsTolerance = 50; // and we give ourselfs 50 ms of tolerance
+            final long millisecondsTolerance = 1000; // and we give ourselfs 50 ms of tolerance
             millisecondsToSleep = (millisecondsStreamTimeSinceStartOfVideo -
                 (millisecondsClockTimeSinceStartofVideo+millisecondsTolerance));
           }
@@ -630,7 +695,7 @@ public class videoClient {
         {
         	if(mScreen == null){
         		mScreen = new VideoImage();
-        		mScreen.setSize(700, 550);
+        		mScreen.setSize(650, 520);
         	}
           
         }
@@ -689,12 +754,63 @@ public class videoClient {
             mLine=null;
           }
         }
+        public class UpdateWorker extends SwingWorker   
+        {  
+            JProgressBar bar = null;  
+//            JFrame f=null;  
+            public UpdateWorker(JProgressBar bar)  
+            {  
+                this.bar = bar;  
+//                this.f = f;  
+            }         
+              
+            protected String doInBackground() throws Exception {  
+//                Random rdm = new Random();  
+                int pv = 0;
+                while(pv<100)  
+                {  
+                	Thread.sleep(1000);
+//                    if((num/thisFileSize)*100 )
+                	pv = (int)((num*100)/thisFileSize);
+//                	System.out.println("pv: "+pv);
+                	bar.setValue(pv);
+                }  
+//                bar.setValue(100);
+//                pv = 0;
+//                bar.setVisible(false);
+                return null;  
+            }   
+              
+            protected void done()   
+            {   
+//            	bar.setValue(0);
+//            	mScreen.repaint();
+//            	System.out.println("in done!");
+//                f.setVisible(false);      
+//                f.dispose();  
+            }  
+        }
+        public class terminateButtonListener implements ActionListener{
+    		public void actionPerformed(ActionEvent e) {
+    			System.out.println("in terminate button~");
+    			try {
+    				skt_b.close();
+    			} catch (IOException e1) {
+    				// TODO Auto-generated catch block
+    				e1.printStackTrace();
+    			}
+    			mScreen.dispose();
+    		}	
+    	}
         	
 	}
     public class binaryReadIn implements Runnable{
 		int portForConnect;
+		int thisFileSize;
 		Socket skt_b;
 		IContainer container;
+		int num2=0;
+		
 		
 		/**
 		   * The audio line we'll output sound to; it'll be the default audio device on your system if available
@@ -712,9 +828,11 @@ public class videoClient {
 		  private long mFirstVideoTimestampInStream;
 		  
 		
-    	public binaryReadIn(int portNum){
+    	public binaryReadIn(int portNum,int fileSizeAns){
     		portForConnect = portNum;
-//    		mScreen = null;
+    		thisFileSize = fileSizeAns;
+    		System.out.println("(b)thisFileSize: "+thisFileSize);
+//    		num2 = 0;
 		}
     	public void run() {
 			//connect with server with portNum and remoteHost
@@ -836,7 +954,7 @@ public class videoClient {
                     {
                       // if this stream is not in BGR24, we're going to need to
                       // convert it.  The VideoResampler does that for us.
-                      resampler = IVideoResampler.make(600, 450, IPixelFormat.Type.BGR24,
+                      resampler = IVideoResampler.make(600, 500, IPixelFormat.Type.BGR24,
                           videoCoder.getWidth(), videoCoder.getHeight(), videoCoder.getPixelType());
                       if (resampler == null)
                         throw new RuntimeException("could not create color space resampler for: " + filename);
@@ -912,25 +1030,57 @@ public class videoClient {
                   
                   System.out.println(jp.getLayout());
                   
-                  JButton sendButton = new JButton("暫停");
+                  JButton sendButton = new JButton(new ImageIcon("1435509837_play.png"));
+                  sendButton.setOpaque(false);
+                  sendButton.setContentAreaFilled(false);
+                  sendButton.setBorderPainted(false);
+                  
                   sendButton.addActionListener(new SendButtonListener());
-                  sendButton.setSize(100, 100);
+//                  sendButton.setSize(100, 100);
                   jp.add(sendButton);
                   
-                  terminateButton = new JButton("結束");
+                  JButton pauseButton = new JButton(new ImageIcon("1435509845_pause.png"));
+                  pauseButton.setOpaque(false);
+                  pauseButton.setContentAreaFilled(false);
+                  pauseButton.setBorderPainted(false);
+                  pauseButton.addActionListener(new StopButtonListener());
+                  jp.add(pauseButton);
+                  
+                  terminateButton = new JButton(new ImageIcon("1435509855_stop.png"));
+                  terminateButton.setOpaque(false);
+                  terminateButton.setContentAreaFilled(false);
+                  terminateButton.setBorderPainted(false);
+                  
+                  JProgressBar progressBar = new JProgressBar();  
+                  progressBar.setValue(0);  
+                  progressBar.setStringPainted(true);
+                  progressBar.setSize(100, 20);
+                  
+                  UIManager.put("ProgressBar.background", Color.ORANGE);
+                  UIManager.put("ProgressBar.foreground", Color.RED);
+                  UIManager.put("ProgressBar.selectionBackground", Color.YELLOW);
+                  UIManager.put("ProgressBar.selectionForeground", Color.gray);
+                  
+                  mScreen.add(progressBar, BorderLayout.SOUTH);
+                  mScreen.invalidate();
+                  mScreen.validate();
+                  UpdateWorker updateWorker = new UpdateWorker(progressBar);  
+                  updateWorker.execute();
+                  
                   terminateButton.addActionListener(new terminateButtonListener());
-                  terminateButton.setSize(100, 100);
+//                  terminateButton.setSize(100, 100);
                   jp.add(terminateButton);
                   mScreen.setDefaultCloseOperation(mScreen.EXIT_ON_CLOSE);
-                  jp.setBackground(Color.green);
+                  jp.setBackground(Color.gray);
                   mScreen.add(jp,BorderLayout.EAST);
+                  
                   
                   while(container.readNextPacket(packet) >= 0)
                   {
                 	  while(currentStatus == 0){
                 		  System.out.print("InWhile");
                 	  }
-                	  System.out.println();
+//                	  System.out.println();
                     /*
                      * Now we have a packet, let's see if it belongs to our video stream
                      */
@@ -947,6 +1097,8 @@ public class videoClient {
                        * 
                        */
                       int bytesDecoded = videoCoder.decodeVideo(picture, packet, 0);
+                      num2 = num2 + bytesDecoded;
+//                      System.out.println("sum of bytesDecoded: "+num2);
                       if (bytesDecoded < 0)
                         throw new RuntimeException("got error decoding audio in: " + filename);
 
@@ -961,6 +1113,8 @@ public class videoClient {
                     		mWriter.encodeVideo(0, picture);
                     	}
                         IVideoPicture newPic = picture;
+//                        num = (int)videoCoder.getExtraDataSize();
+//                        System.out.println("num: "+num);
                         /*
                          * If the resampler is not null, that means we didn't get the video in BGR24 format and
                          * need to convert it into BGR24 format.
@@ -968,7 +1122,7 @@ public class videoClient {
                         if (resampler != null)
                         {
                           // we must resample
-                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 450);
+                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 500);
                           if (resampler.resample(newPic, picture) < 0)
                             throw new RuntimeException("could not resample video from: " + filename);
                         }
@@ -993,7 +1147,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(700, 550);
+                        mScreen.setSize(650, 520);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -1035,6 +1189,7 @@ public class videoClient {
                       while(offset < packet.getSize())
                       {
                         int bytesDecoded = audioCoder.decodeAudio(samples, packet, offset);
+                        num2 = num2 + bytesDecoded;
                         if (bytesDecoded < 0)
                           throw new RuntimeException("got error decoding audio in: " + filename);
                         offset += bytesDecoded;
@@ -1093,13 +1248,17 @@ public class videoClient {
                 
                   
 //                //temp~~~~~~~
-                writer.println("adFileData IMG_2964.flv ");
-      			writer.flush();
-//                
-      			Thread.sleep(1000);
-                skt.close();
-                
+//                writer.println("fileData IMG_2964.flv ");
+//      			writer.flush();
+//              
+      			
+      			mScreen.remove(progressBar);
                 System.out.println("\n檔案接收完畢！");
+      			Thread.sleep(1000);
+                
+      			
+      			skt_b.close();
+                
                 
                 
     	        
@@ -1211,32 +1370,87 @@ public class videoClient {
             mLine=null;
           }
         }
+        public class UpdateWorker extends SwingWorker   
+        {  
+            JProgressBar bar = null;  
+//            JFrame f=null;  
+            public UpdateWorker(JProgressBar bar)  
+            {  
+                this.bar = bar;  
+//                this.f = f;  
+            }         
+              
+            protected String doInBackground() throws Exception {  
+                Random rdm = new Random();  
+                int pv = 0;  
+                while(pv<100)  
+                {  
+                	Thread.sleep(1000);
+//                    if((num/thisFileSize)*100 )
+                	
+                	pv = (int)((num2*100)/thisFileSize);
+//                	System.out.println("num2: "+num2);
+//                	System.out.println("(b)thisFileSize: "+thisFileSize);
+//                	System.out.println("pv: "+pv);
+                	bar.setValue(pv);
+                }  
+                bar.setValue(100);
+//                bar.setVisible(false);
+                return null;  
+            }   
+              
+            protected void done()
+            {   
+//            	mScreen.remove(bar);
+            	bar.setValue(0);
+            	mScreen.repaint();
+            	System.out.println("in done!");
+//                f.setVisible(false);      
+//                f.dispose();  
+            }  
+        }
+        public class terminateButtonListener implements ActionListener{
+    		public void actionPerformed(ActionEvent e) {
+    			System.out.println("in terminate button~");
+    			try {
+    				skt_b.close();
+    			} catch (IOException e1) {
+    				// TODO Auto-generated catch block
+    				e1.printStackTrace();
+    			}
+    			mScreen.dispose();
+    		}	
+    	}
         	
 	}
     public class SendButtonListener implements ActionListener{
 
 		public void actionPerformed(ActionEvent e) {
 			System.out.println("ererer");
-			if(currentStatus == 0){
-				currentStatus = 1;
-			}
-			else if(currentStatus == 1){
-				currentStatus = 0;
-			}
-			try{
-//				writer.println("stop");
-//				writer.flush();
-			}catch(Exception ex){
-				ex.printStackTrace();
-			}
+			currentStatus = 1;
 		}
 		
 	}
-    public class terminateButtonListener implements ActionListener{
+    public class StopButtonListener implements ActionListener{
+
 		public void actionPerformed(ActionEvent e) {
-			System.out.println("in terminate button~");
-			mScreen.dispose();
-		}	
+			System.out.println("ererer");
+			currentStatus = 0;
+		}
+		
 	}
+//    public class terminateButtonListener implements ActionListener{
+//		public void actionPerformed(ActionEvent e) {
+//			System.out.println("in terminate button~");
+////			try {
+//////				skt_b.close();
+////			} catch (IOException e1) {
+////				// TODO Auto-generated catch block
+////				e1.printStackTrace();
+////			}
+//			mScreen.dispose();
+//		}	
+//	}
+     
     
 }
