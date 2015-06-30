@@ -23,13 +23,17 @@ import test.Video;
 import com.xuggle.xuggler.IContainer;
 
 public class videoServer {
-	Socket sock;
-	BufferedReader reader;
-	PrintWriter writer;
+//	Socket sock;
+//	BufferedReader reader;
+//	PrintWriter writer;
 	static int currentPortNum = 6001;
-	int[] getAdPri;
+//	int[] getAdPri;
 	
 	public class ClientHandler implements Runnable{
+		int[] getAdPri;
+		Socket sock;
+		BufferedReader reader;
+		PrintWriter writer;
 		public ClientHandler(Socket clientSocket){
 			try{
 				sock = clientSocket;

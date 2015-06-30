@@ -67,7 +67,7 @@ public class videoClient {
 //	int num = 0;
 
 	static int port = 6000;
-	static String remoteHost = "127.0.0.1";
+	static String remoteHost = "192.168.0.104";
 	Socket skt;
 	
 //	menu parent;
@@ -600,7 +600,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(660, 396);
+                        mScreen.setSize(760, 396);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -762,7 +762,7 @@ public class videoClient {
         {
         	if((mScreen == null) || (!mScreen.isActive())){
         		mScreen = new VideoImage();
-        		mScreen.setSize(660, 396);
+        		mScreen.setSize(760, 396);
         	}
           
         }
@@ -1222,7 +1222,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(660, 396);
+                        mScreen.setSize(760, 396);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
