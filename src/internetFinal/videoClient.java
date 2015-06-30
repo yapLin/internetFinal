@@ -127,8 +127,12 @@ public class videoClient {
 					int fileSizeInt = Integer.parseInt(fileSizeAns);
 					System.out.println("(b)fileSizeInt: "+ fileSizeInt);
 					
+					//file name
+					String fileName = stringArray[3].toString();	//file name
+					System.out.println("(ad)fileName: "+ fileName);
+					
 					//get file data here
-					Thread binaryFileThread = new Thread(new binaryReadIn(getPortNumInt,fileSizeInt));
+					Thread binaryFileThread = new Thread(new binaryReadIn(getPortNumInt,fileSizeInt, fileName));
 					binaryFileThread.start();
 				}
 				
@@ -866,6 +870,7 @@ public class videoClient {
 //    			}
 //    			mScreen.removeAll();
     			mScreen.dispose();
+    			mScreen = null;
     		}	
     	}
         	
@@ -876,6 +881,7 @@ public class videoClient {
 		Socket skt_b;
 		IContainer container;
 		int num2=0;
+		String thisFileName;
 		
 		
 		/**
@@ -894,11 +900,12 @@ public class videoClient {
 		  private long mFirstVideoTimestampInStream;
 		  
 		
-    	public binaryReadIn(int portNum,int fileSizeAns){
+    	public binaryReadIn(int portNum,int fileSizeAns,String fileName){
     		portForConnect = portNum;
     		thisFileSize = fileSizeAns;
     		System.out.println("(b)thisFileSize: "+thisFileSize);
     		currentStatus = 1;
+    		thisFileName = fileName;
 //    		num2 = 0;
 		}
     	public void run() {
@@ -955,7 +962,7 @@ public class videoClient {
                   container = IContainer.make();
                   IMediaWriter mWriter = null;
                   if(downloadOrNot == true){
-                	  mWriter = ToolFactory.makeWriter("fileName.flv");
+                	  mWriter = ToolFactory.makeWriter("viewed_"+thisFileName+".flv");
                   }
                   
                   // Open up the container
@@ -1498,6 +1505,7 @@ public class videoClient {
 //    			}
 //    			mScreen.removeAll();
     			mScreen.dispose();
+    			mScreen = null;
     		}
 //    		public void tryHere() throws InterruptedException{
 //    			t.interrupt();
