@@ -15,6 +15,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Random;
 
 import test.User;
 import test.Video;
@@ -25,7 +26,8 @@ public class videoServer {
 	Socket sock;
 	BufferedReader reader;
 	PrintWriter writer;
-	static int currentPortNum = 5001;
+	static int currentPortNum = 6001;
+	int[] getAdPri;
 	
 	public class ClientHandler implements Runnable{
 		public ClientHandler(Socket clientSocket){
@@ -58,8 +60,20 @@ public class videoServer {
 							sendFileData(threadType, "notAd");
 						}
 						else if(threadType.startsWith("adFileData")){
-							System.out.println("get adFileData Request!");
-							sendFileData(threadType, "ad");
+							
+							//切割m.login出來
+							String[] stringArray = threadType.split(" ");
+							String getLogin = stringArray[2].toString();	//m.login
+							
+							System.out.println("getLogin: "+getLogin);
+							if(getLogin.equals("1")){
+								System.out.println("get fileData Request!");
+								sendFileData(threadType, "notAd");
+							}
+							else{
+								System.out.println("get adFileData Request!");
+								sendFileData(threadType, "ad");
+							}
 						}
 						else if(threadType.startsWith("login")){
 							//切割fileName出來
@@ -140,9 +154,40 @@ public class videoServer {
 							
 							
 						}
-						else if(threadType.startsWith("fileSize")){
+						else if(threadType.startsWith("search")){
+							String[] stringArray = threadType.split(" ");
+							String searchName = stringArray[1];
+							String returnData = "searchReturn ";
+							
+							Video vod = new Video();
+							int[] ans = vod.searchVideo(searchName);
+							
+							for(int j = 0; j < ans.length; j++){
+								returnData = returnData+ans[j]+" ";
+							}
+							writer.println(returnData);
+							writer.flush();
+						}
+						else if(threadType.startsWith("top3")){
+							String sendTop3 = "sendTop3 ";
+							Video vod = new Video();
+							int[] intArr = vod.getTop3();
+							for(int i = 0; i < intArr.length; i++){
+								sendTop3 = sendTop3 + intArr[i]+ " ";
+							}
+							System.out.println("sendTop3: "+ sendTop3);
+							writer.println(sendTop3);
+							writer.flush();
+							
+							client.Video vod2 = new client.Video();
+							getAdPri = vod2.getAd();
 							
 						}
+//						else if(threadType.startsWith("adPri")){
+//							client.Video vod = new client.Video();
+//							int[] getAdPri = vod.getAd();
+//							
+//						}
 						
 					}
 				}
@@ -162,18 +207,51 @@ public class videoServer {
 			
 			//若為ad則從server端決定
 			if(type.equals("ad")){
-				getFileName = "youtube_h264_mp3.flv";
+//				getFileName = "ad/1.flv";
+				
+				int count = 0;
+				int count2 = 0;
+				int count3 = 0;
+				for(int i=0; i < getAdPri.length-1; i++){
+					count = count + getAdPri[i+1];
+				}
+				int[] prior = new int[count];
+				for(int i=0; i < getAdPri.length-1; i++){
+					count2 = 0;
+					while(count2 <getAdPri[i+1]){
+						prior[count3] = i+1;
+						count2++;
+						count3++;
+					}
+				}
+				System.out.println("~~~~~~proir[]: ");
+				for(int i=0; i < prior.length; i++){
+					System.out.println(prior[i]);
+				}
+				
+				Random ran = new Random();
+				int ranNum = ran.nextInt(count3);
+				
+				getFileName = "ad/"+Integer.toString(prior[ranNum])+".flv";
+//				getAdPri.length-1
 			}
 			
 			
-			int fileSizeAns = getFileSize(getFileName);
+			int fileSizeAns;
 			
 			
 			int nextPort = currentPortNum;
 			currentPortNum = currentPortNum + 1;
-			
-			Thread t = new Thread(new sendBinary(getFileName, nextPort));
-			t.start();
+			if(type.equals("ad")){
+				fileSizeAns = getFileSize(getFileName);
+				Thread t = new Thread(new sendBinary(getFileName, nextPort));
+				t.start();
+			}
+			else{
+				fileSizeAns = getFileSize(getFileName+".flv");
+				Thread t = new Thread(new sendBinary(getFileName+".flv", nextPort));
+				t.start();
+			}
 			System.out.println("ad or not type: "+type);
 			if(type.equals("ad")){
 				//告訴client我assign的port號
@@ -183,6 +261,10 @@ public class videoServer {
 			}
 			else{
 				//告訴client我assign的port號
+
+				Video vod = new Video();
+				vod.numAdd(Integer.parseInt(getFileName));
+				
 				writer.println("getFilePortNum "+nextPort+" "+Integer.toString(fileSizeAns)+" "+getFileName+" ");
 				writer.flush();
 				System.out.println("in notAd if");
@@ -317,7 +399,7 @@ public class videoServer {
 	}
 	public void go(){
 		try { 
-	        int port = 5000;
+	        int port = 6000;
 	        System.out.println("簡易檔案接收...");
 	        System.out.printf("將接收檔案於連接埠: %d%n", port); 
 	

@@ -1,4 +1,5 @@
 package test;
+
 import java.sql.*;
 
 public class Video {
@@ -12,10 +13,10 @@ public class Video {
 		row = null;
 	}
 	
-	public String[] searchVideo(String key){
+	public int[] searchVideo(String key){
 		int i = 0;
 		int j = 0;
-		String[] ans = null;
+		int[] ans = null;
 		String str = "SELECT * FROM video WHERE name LIKE '%"+key+"%'";
 		
 		try {
@@ -23,19 +24,26 @@ public class Video {
 			row.last();
 			i = row.getRow();
 			row.first();
-			ans = new String[i+1];
+			
+			
+			if(i == 0){
+				ans = new int[1];
+			}
+			else{
+				ans = new int[i];
+			}
+			
 			
 			if(i > 0){
-				ans[0] = Integer.toString(i);
-
 				do{
+					
+					ans[j] = Integer.parseInt(row.getString("id"));
 					j++;
-					ans[j] = row.getString("name");
 				}
 				while(row.next());
 			}
 			else{
-				ans[0] = "0";
+				ans[0] = 0;
 			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -70,6 +78,50 @@ public class Video {
 			else{
 				ans[0] = "0";
 			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return ans;
+	}
+
+	public void numAdd(int key){
+		int i = 0;
+		String str = "SELECT * FROM video WHERE id = '"+key+"'";
+		
+		try {
+			row = stm.executeQuery(str);
+			
+			if(row.next()){
+				System.out.println("ok");
+				i = Integer.parseInt(row.getString("num"));
+
+				str = "UPDATE video SET num = '"+(i+1)+"' WHERE id = '"+key+"'";
+				stm.executeUpdate(str);
+			}
+			
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public int[] getTop3(){
+		int[] ans = new int[3];
+		String str = "SELECT * FROM video ORDER BY num DESC";
+		
+		try {
+			row = stm.executeQuery(str);
+	
+			if(row.next()){
+				for(int i = 0; i < 3; i++){
+					ans[i] = Integer.parseInt(row.getString("id"));
+					row.next();
+				}
+			}	
+				
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

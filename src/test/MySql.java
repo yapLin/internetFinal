@@ -15,7 +15,7 @@ public class MySql {
 			e1.printStackTrace();
 		}
 		
-		String url = "jdbc:mysql://118.166.86.15:3306/yap";
+		String url = "jdbc:mysql://114.36.76.84:3306/yap";
 		String username = "yap";
 		String password = "456121";
 		

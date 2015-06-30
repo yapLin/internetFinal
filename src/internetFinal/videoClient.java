@@ -31,6 +31,9 @@ import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 
+import test.Video;
+import client.menu;
+
 import com.xuggle.mediatool.IMediaWriter;
 import com.xuggle.mediatool.ToolFactory;
 import com.xuggle.xuggler.Global;
@@ -49,10 +52,10 @@ import com.xuggle.xuggler.io.XugglerIO;
 
 public class videoClient {
 	JButton terminateButton;
-	PrintWriter writer;
+	public PrintWriter writer;
 	BufferedReader reader;
 	String[] fileList = null;
-	static boolean downloadOrNot = false;
+	static boolean downloadOrNot = true;
 	
 	static boolean isLogIn = false;
 	
@@ -63,17 +66,25 @@ public class videoClient {
 //	int num2 = 0;
 //	int num = 0;
 
-	static int port = 5000;
+	static int port = 6000;
 	static String remoteHost = "127.0.0.1";
 	Socket skt;
 	
+//	menu parent;
+	menu m;
+	
+//	public videoClient(menu menuHere){
+//		parent = menuHere;
+//	}
+		
 	public static void main(String[] args) {
-		videoClient client = new videoClient();
-		client.go();
+		videoClient vc = new videoClient();
+		vc.go();
 	}
 	public void go(){
 		String message;
 		setUpNetworking();
+		System.out.println("setup networking here~");
 		
 		Thread writerThread = new Thread(new outgoingWriter());
 		writerThread.start();
@@ -124,15 +135,19 @@ public class videoClient {
 				else if(message.startsWith("loginSuccess")){
 					System.out.println("登入成功");
 					isLogIn = true;
+					m.changeView(2);
 				}
 				else if(message.startsWith("loginFailed")){
 					System.out.println("登入失敗");
+					m.changeView(3);
 				}
 				else if(message.startsWith("registerSuccess")){
 					System.out.println("註冊成功");
+					m.changeView(0);
 				}
 				else if(message.startsWith("registerFailed")){
 					System.out.println("註冊失敗");
+					m.changeView(1);
 				}
 				else if(message.startsWith("fileListData")){
 					System.out.println(message);
@@ -145,11 +160,36 @@ public class videoClient {
 //						System.out.println(stringArray[i]);
 						fileList[i] = stringArray[i];
 					}
-					for(int i= 0; i < stringArray.length; i++){
-						System.out.println(i);
-						System.out.println(fileList[i]);
-//						fileList[i] = stringArray[i];
-					}			
+//					for(int i= 0; i < stringArray.length; i++){
+//						System.out.println(i);
+//						System.out.println(fileList[i]);
+////						fileList[i] = stringArray[i];
+//					}
+					
+					
+					
+				}
+				else if(message.startsWith("searchReturn")){
+					String[] stringArray = message.split(" ");
+					int[] giveInt = new int[stringArray.length-1];
+					for(int i = 1; i < stringArray.length; i++){
+						giveInt[i-1] = Integer.parseInt(stringArray[i]);
+					}
+					m.changeVideo(giveInt);
+				}
+				else if(message.startsWith("sendTop3")){
+					String[] stringArray = message.split(" ");
+					int top1 = Integer.parseInt(stringArray[1]);
+					int top2 = Integer.parseInt(stringArray[2]);
+					int top3 = Integer.parseInt(stringArray[3]);
+					int[] aa = {top1, top2, top3};
+					
+					Thread.sleep(1000);
+					//menu start
+					m.setFile(fileList);
+					m.setTop3(aa);
+					m.go();
+					
 				}
 				
 			}
@@ -196,6 +236,21 @@ public class videoClient {
     
     public class outgoingWriter implements Runnable{
 		public void run() {
+			
+			
+			writer.println("fileList");
+  			writer.flush();
+  			
+  			writer.println("top3");
+  			writer.flush();
+			
+			
+			//add frame main part here
+			m = new menu(writer);
+//			System.out.print("writer: "+writer);
+			
+			
+			
 			//tell what I needed first!
 //			writer.println("fileData IMG_2964.flv ");
 //			writer.flush();
@@ -206,8 +261,8 @@ public class videoClient {
 //				e.printStackTrace();
 //			}
 			
-			writer.println("adFileData fileName.flv ");
-  			writer.flush();
+//			writer.println("adFileData fileName.flv ");
+//  			writer.flush();
 			
 //			writer.println("fileList");
 //  			writer.flush();
@@ -253,6 +308,7 @@ public class videoClient {
     		thisFileSize = fileSizeAns;
 //    		System.out.println("thisFileSize: "+thisFileSize);
     		thisFileName = fileName;
+    		currentStatus = 1;
 //    		mScreen = null;
 //    		num = 0;
 		}
@@ -372,7 +428,7 @@ public class videoClient {
                     {
                       // if this stream is not in BGR24, we're going to need to
                       // convert it.  The VideoResampler does that for us.
-                      resampler = IVideoResampler.make(600, 500, IPixelFormat.Type.BGR24,
+                      resampler = IVideoResampler.make(600, 360, IPixelFormat.Type.BGR24,
                           videoCoder.getWidth(), videoCoder.getHeight(), videoCoder.getPixelType());
                       if (resampler == null)
                         throw new RuntimeException("could not create color space resampler for: " + filename);
@@ -454,10 +510,10 @@ public class videoClient {
                   progressBar.setStringPainted(true);
                   progressBar.setSize(100, 20);
 //                  progressBar.setBackground(Color.re);
-                  UIManager.put("ProgressBar.background", Color.ORANGE);
-                  UIManager.put("ProgressBar.foreground", Color.RED);
-                  UIManager.put("ProgressBar.selectionBackground", Color.BLUE);
-                  UIManager.put("ProgressBar.selectionForeground", Color.gray);
+//                  UIManager.put("ProgressBar.background", Color.ORANGE);
+//                  UIManager.put("ProgressBar.foreground", Color.RED);
+//                  UIManager.put("ProgressBar.selectionBackground", Color.BLUE);
+//                  UIManager.put("ProgressBar.selectionForeground", Color.gray);
                   
                   mScreen.add(progressBar, BorderLayout.SOUTH);
                   UpdateWorker updateWorker = new UpdateWorker(progressBar);  
@@ -472,6 +528,7 @@ public class videoClient {
                   
                   while(container.readNextPacket(packet) >= 0)
                   {
+                	  if(!mScreen.isActive()) return;
                 	  while(currentStatus == 0){
                 		  System.out.print("InWhile");
                 	  }
@@ -514,7 +571,7 @@ public class videoClient {
                         if (resampler != null)
                         {
                           // we must resample
-                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 500);
+                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 360);
                           if (resampler.resample(newPic, picture) < 0)
                             throw new RuntimeException("could not resample video from: " + filename);
                         }
@@ -539,7 +596,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(650, 520);
+                        mScreen.setSize(660, 396);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -580,10 +637,13 @@ public class videoClient {
                        */
                       while(offset < packet.getSize())
                       {
+                    	if(!mScreen.isActive())return;
+                    	
                         int bytesDecoded = audioCoder.decodeAudio(samples, packet, offset);
                         num = num + bytesDecoded;
-                        if (bytesDecoded < 0)
+                        if (bytesDecoded < 0){
                           throw new RuntimeException("got error decoding audio in: " + filename);
+                        }
                         offset += bytesDecoded;
                         /*
                          * Some decoder will consume data in a packet, but will not be able to construct
@@ -606,7 +666,7 @@ public class videoClient {
                        */
                       do {} while(false);
                     }
-                    
+                   if(!mScreen.isActive()) return; 
                   }
                   /*
                    * Technically since we're exiting anyway, these will be cleaned up by 
@@ -633,8 +693,10 @@ public class videoClient {
                 
                   
                 //temp~~~~~~~
-                writer.println("fileData "+thisFileName+" ");
-      		  	writer.flush();
+                if(mScreen.isActive()){
+                  	writer.println("fileData "+thisFileName+" ");
+      		  		writer.flush();
+                }
 //              
       		  	mScreen.remove(progressBar);
       		  	mScreen.repaint();
@@ -644,7 +706,8 @@ public class videoClient {
                 
                 
                 skt_b.close();
-    	        
+    		}catch(InterruptedException ex){
+    			ex.printStackTrace();    
     		}catch(Exception ex){
     			ex.printStackTrace();
     		}
@@ -693,9 +756,9 @@ public class videoClient {
          */
         private void openJavaVideo()
         {
-        	if(mScreen == null){
+        	if((mScreen == null) || (!mScreen.isActive())){
         		mScreen = new VideoImage();
-        		mScreen.setSize(650, 520);
+        		mScreen.setSize(660, 396);
         	}
           
         }
@@ -793,12 +856,15 @@ public class videoClient {
         public class terminateButtonListener implements ActionListener{
     		public void actionPerformed(ActionEvent e) {
     			System.out.println("in terminate button~");
-    			try {
-    				skt_b.close();
-    			} catch (IOException e1) {
-    				// TODO Auto-generated catch block
-    				e1.printStackTrace();
-    			}
+//    			try {
+//    				skt_b.close();
+//    				Thread.interrupted();
+//    				
+//    			} catch (IOException e1) {
+//    				// TODO Auto-generated catch block
+//    				e1.printStackTrace();
+//    			}
+//    			mScreen.removeAll();
     			mScreen.dispose();
     		}	
     	}
@@ -832,6 +898,7 @@ public class videoClient {
     		portForConnect = portNum;
     		thisFileSize = fileSizeAns;
     		System.out.println("(b)thisFileSize: "+thisFileSize);
+    		currentStatus = 1;
 //    		num2 = 0;
 		}
     	public void run() {
@@ -954,7 +1021,7 @@ public class videoClient {
                     {
                       // if this stream is not in BGR24, we're going to need to
                       // convert it.  The VideoResampler does that for us.
-                      resampler = IVideoResampler.make(600, 500, IPixelFormat.Type.BGR24,
+                      resampler = IVideoResampler.make(600, 360, IPixelFormat.Type.BGR24,
                           videoCoder.getWidth(), videoCoder.getHeight(), videoCoder.getPixelType());
                       if (resampler == null)
                         throw new RuntimeException("could not create color space resampler for: " + filename);
@@ -1056,10 +1123,10 @@ public class videoClient {
                   progressBar.setStringPainted(true);
                   progressBar.setSize(100, 20);
                   
-                  UIManager.put("ProgressBar.background", Color.ORANGE);
-                  UIManager.put("ProgressBar.foreground", Color.RED);
-                  UIManager.put("ProgressBar.selectionBackground", Color.YELLOW);
-                  UIManager.put("ProgressBar.selectionForeground", Color.gray);
+//                  UIManager.put("ProgressBar.background", Color.ORANGE);
+//                  UIManager.put("ProgressBar.foreground", Color.RED);
+//                  UIManager.put("ProgressBar.selectionBackground", Color.YELLOW);
+//                  UIManager.put("ProgressBar.selectionForeground", Color.gray);
                   
                   mScreen.add(progressBar, BorderLayout.SOUTH);
                   mScreen.invalidate();
@@ -1077,6 +1144,7 @@ public class videoClient {
                   
                   while(container.readNextPacket(packet) >= 0)
                   {
+                	  if(!mScreen.isActive()) return;
                 	  while(currentStatus == 0){
                 		  System.out.print("InWhile");
                 	  }
@@ -1122,7 +1190,7 @@ public class videoClient {
                         if (resampler != null)
                         {
                           // we must resample
-                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 500);
+                          newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 600, 360);
                           if (resampler.resample(newPic, picture) < 0)
                             throw new RuntimeException("could not resample video from: " + filename);
                         }
@@ -1147,7 +1215,7 @@ public class videoClient {
                         
                         mScreen.setImage(Utils.videoPictureToImage(newPic));
                         
-                        mScreen.setSize(650, 520);
+                        mScreen.setSize(660, 396);
 //                        JButton sendButton = new JButton("暫停");
 //                        sendButton.addActionListener(new SendButtonListener());
 //                        sendButton.setSize(100, 100);
@@ -1188,6 +1256,7 @@ public class videoClient {
                        */
                       while(offset < packet.getSize())
                       {
+                    	if(!mScreen.isActive())return;
                         int bytesDecoded = audioCoder.decodeAudio(samples, packet, offset);
                         num2 = num2 + bytesDecoded;
                         if (bytesDecoded < 0)
@@ -1217,7 +1286,7 @@ public class videoClient {
                        */
                       do {} while(false);
                     }
-                    
+                    if(!mScreen.isActive()) return; 
                   }
                   /*
                    * Technically since we're exiting anyway, these will be cleaned up by 
@@ -1261,11 +1330,13 @@ public class videoClient {
                 
                 
                 
-    	        
+    		}catch(InterruptedException ex){
+//    			ex.printStackTrace();
+    			System.out.println("Thread was inturrupted");
     		}catch(Exception ex){
     			ex.printStackTrace();
     		}
-            
+    		
 		}
     	private long millisecondsUntilTimeToDisplay(IVideoPicture picture)
         {
@@ -1310,7 +1381,7 @@ public class videoClient {
          */
         private void openJavaVideo()
         {
-        	if(mScreen == null){
+        	if((mScreen == null) || (!mScreen.isActive())){
         		mScreen = new VideoImage();
         	}
 //          mScreen.setSize(1000, 1000);
@@ -1410,16 +1481,27 @@ public class videoClient {
             }  
         }
         public class terminateButtonListener implements ActionListener{
-    		public void actionPerformed(ActionEvent e) {
+//        	Thread t;
+//        	public terminateButtonListener(Thread t_in){
+//        		t = t_in;
+//        	}
+    		public void actionPerformed(ActionEvent e){
     			System.out.println("in terminate button~");
-    			try {
-    				skt_b.close();
-    			} catch (IOException e1) {
-    				// TODO Auto-generated catch block
-    				e1.printStackTrace();
-    			}
+//    			t.interrupt();
+//    			try {
+//    				skt_b.close();
+//    				Thread.interrupted();
+//    				
+//    			} catch (IOException e1) {
+//    				// TODO Auto-generated catch block
+//    				e1.printStackTrace();
+//    			}
+//    			mScreen.removeAll();
     			mScreen.dispose();
-    		}	
+    		}
+//    		public void tryHere() throws InterruptedException{
+//    			t.interrupt();
+//    		}
     	}
         	
 	}
